@@ -155,54 +155,44 @@ else()
 endif()
 
 # FFTW3 (for audio processing)
-find_package(PkgConfig QUIET)
-if(PkgConfig_FOUND)
-    pkg_check_modules(FFTW3 QUIET fftw3)
-    pkg_check_modules(FFTW3F QUIET fftw3f)
-endif()
+if(APPLE)
+    # On macOS, use find_library for full paths (avoids stale Cellar paths from pkg-config)
+    find_library(TTS_FFTW3_LIB fftw3 HINTS /opt/homebrew/lib /opt/homebrew/opt/fftw/lib /usr/local/lib)
+    find_library(TTS_FFTW3F_LIB fftw3f HINTS /opt/homebrew/lib /opt/homebrew/opt/fftw/lib /usr/local/lib)
+    find_path(TTS_FFTW3_INCLUDE fftw3.h HINTS /opt/homebrew/include /opt/homebrew/opt/fftw/include /usr/local/include)
 
-if(FFTW3_FOUND)
-    target_link_directories(tts PUBLIC ${FFTW3_LIBRARY_DIRS})
-    target_link_libraries(tts PUBLIC ${FFTW3_LIBRARIES})
-    target_include_directories(tts PUBLIC ${FFTW3_INCLUDE_DIRS})
-endif()
-
-# FFTW3F (float version - required for vocoder)
-if(FFTW3F_FOUND)
-    target_link_directories(tts PUBLIC ${FFTW3F_LIBRARY_DIRS})
-    target_link_libraries(tts PUBLIC ${FFTW3F_LIBRARIES})
-else()
-    # macOS Homebrew fallback for fftw3f
-    if(APPLE)
-        find_library(FFTW3F_LIB fftw3f HINTS
-            /opt/homebrew/opt/fftw/lib
-            /opt/homebrew/lib
-            /usr/local/lib)
-        if(FFTW3F_LIB)
-            target_link_libraries(tts PUBLIC ${FFTW3F_LIB})
-        else()
-            message(WARNING "FFTW3F not found")
-        endif()
+    if(TTS_FFTW3_LIB)
+        target_link_libraries(tts PUBLIC ${TTS_FFTW3_LIB})
     endif()
-endif()
+    if(TTS_FFTW3F_LIB)
+        target_link_libraries(tts PUBLIC ${TTS_FFTW3F_LIB})
+    endif()
+    if(TTS_FFTW3_INCLUDE)
+        target_include_directories(tts PUBLIC ${TTS_FFTW3_INCLUDE})
+    endif()
+    if(NOT TTS_FFTW3_LIB AND NOT TTS_FFTW3F_LIB)
+        message(WARNING "FFTW3 not found on macOS")
+    endif()
+else()
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(FFTW3 QUIET fftw3)
+        pkg_check_modules(FFTW3F QUIET fftw3f)
+    endif()
 
-if(NOT FFTW3_FOUND AND NOT FFTW3F_FOUND)
-    # macOS Homebrew fallback
-    if(APPLE)
-        find_library(FFTW3_LIB fftw3 HINTS
-            /opt/homebrew/opt/fftw/lib
-            /opt/homebrew/lib
-            /usr/local/lib)
-        find_path(FFTW3_INCLUDE fftw3.h HINTS
-            /opt/homebrew/opt/fftw/include
-            /opt/homebrew/include
-            /usr/local/include)
-        if(FFTW3_LIB AND FFTW3_INCLUDE)
-            target_link_libraries(tts PUBLIC ${FFTW3_LIB})
-            target_include_directories(tts PUBLIC ${FFTW3_INCLUDE})
-        else()
-            message(WARNING "FFTW3 not found")
-        endif()
+    if(FFTW3_FOUND)
+        target_link_directories(tts PUBLIC ${FFTW3_LIBRARY_DIRS})
+        target_link_libraries(tts PUBLIC ${FFTW3_LIBRARIES})
+        target_include_directories(tts PUBLIC ${FFTW3_INCLUDE_DIRS})
+    endif()
+
+    if(FFTW3F_FOUND)
+        target_link_directories(tts PUBLIC ${FFTW3F_LIBRARY_DIRS})
+        target_link_libraries(tts PUBLIC ${FFTW3F_LIBRARIES})
+    endif()
+
+    if(NOT FFTW3_FOUND AND NOT FFTW3F_FOUND)
+        message(WARNING "FFTW3 not found")
     endif()
 endif()
 
